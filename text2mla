@@ -1,0 +1,108 @@
+#!/bin/sh
+
+# Copyleft by Pedro L Coutin, 2013
+# Do whatever you want with this.
+# QUICKLY, AGAINST MY ORDERS.
+# Manderley speaks.
+
+awk '
+BEGIN {
+   printf(".so tmac.la\n\n");
+
+   pl = "whatever";
+   workscited = 0;
+   blockquote = 0;
+   hc = 0;
+   underlined = 0;
+}
+
+function formatstr(str) {
+   i = 0;
+   while ((i = match(str, /"([ \t,.]+|$)/)) != 0) {
+      str = substr(str, 1, i - 1) "\(rq" substr(str, i + 1);
+   }
+   while ((i = match(str, /"[^ \t]+/)) != 0) {
+      str = substr(str, 1, i - 1) "\(lq" substr(str, i + 1);
+   }
+
+   while ((i = match(str, /\~([ \t,.]+|$)/)) != 0) {
+      str = substr(str, 1, i - 1) "\\|\\fP" substr(str, i + 1);
+   }
+   while ((i = match(str, /\~[^ \t,.]+/)) != 0) {
+      str = substr(str, 1, i - 1) "\\f2" substr(str, i + 1);
+   }
+
+   #sub("__[^ \t\n]+", ".UL ", str);
+   #sub("[^ \t\n]+__", "\n", str);
+
+   return str;
+}
+
+
+# find paragraphs, if not on header
+# comments begin with #
+# avoid "expressions" beginning with [
+/[a-zA-Z]/ && !/^#/ && !/^\[/ {
+   if (hc == 0) {
+      hc++;
+      head_1 = $0;
+   }
+   else if (hc == 1) {
+      hc++;
+      head_2 = "\"" $0 "\"";
+   }
+   else if (hc == 2) {
+      hc++;
+      head_3 = "\"" $0 "\"";
+   }
+   else if (hc == 3) {
+      hc++;
+      if ($0 == "TODAY") {
+         "date  +\"%B %d, %Y\"" | getline date
+         head_4 = "\"" date "\"";
+      }
+      else {
+         head_4 = "\"" $0 "\"";
+      }
+   }
+   else {
+      if (pl == "") {
+         if (workscited) {
+            print(".CI");
+         }
+         else {
+            print ".PP";
+         }
+      }
+      print formatstr($0);
+   }
+}
+
+{
+   if (hc == 4) {
+	printf(".ML %s %s %s %s\n",
+	      head_1, head_2, head_3, head_4);
+        hc++;
+   }
+   else if (blockquote && $0 !~ "^>") {
+      print(".QE");
+      blockquote = 0;
+   }
+   pl = $0;
+}
+
+/^> / {
+   if (blockquote == 0) {
+      print(".QS");
+      blockquote = 1;
+   }
+   print formatstr(substr($0, 3));
+}
+
+
+/\[Works Cited\]/ {
+   print ".WC";
+   workscited = 1;
+}
+' $1 | groff > $1.ps       # This needs tmac.la in the same directory.
+ps2pdf $1.ps >/dev/null 2>/dev/null
