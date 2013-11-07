@@ -1,10 +1,5 @@
 #!/bin/sh
 
-# Copyleft by Pedro L Coutin, 2013
-# Do whatever you want with this.
-# QUICKLY, AGAINST MY ORDERS.
-# Manderley speaks.
-
 awk '
 BEGIN {
    printf(".so tmac.la\n\n");
